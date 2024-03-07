@@ -1,0 +1,58 @@
+---
+name: gh_scan-github-workflow-scan
+
+on:
+  push:
+  schedule:
+    - cron: "0 13 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 17 * * *"
+    - cron: "0 19 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+#  secrets:
+#    OPSGENIE_API_KEY:
+#      description: "Allows Ops Genie notifications."
+#      required: true
+#    SLACK_WEBHOOK:
+#      description: "Optional, enables Slack notifications."
+#      required: false
+#    SCAN_TOKEN:
+#      description: "Allows gh_scan to access security information for all repositories."
+#      required: false
+
+jobs:
+
+  configuration:
+    uses: cicd-tools-org/cicd-tools/.github/workflows/job-00-generic-read_json_file.yml@main
+    with:
+      JSON_FILE_PATH: ".github/config/workflows/workflow-push.json"
+
+  gh_scan:
+    needs: [configuration]
+    secrets:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      ENV_SECRET_1: ${{ secrets.SCAN_TOKEN }}
+    uses: cicd-tools-org/cicd-tools/.github/workflows/job-80-poetry-precommit_commit_stage_hook.yml@main
+    with:
+      CONCURRENCY: ${{ fromJSON(needs.configuration.outputs.JSON_FILE_DATA).ci_concurrency_limit }}
+      PRE_HOOK_COMMAND: echo "GH_TOKEN=${ENV_SECRET_1}" >> "${GITHUB_ENV}"
+      PRECOMMIT_HOOK_ID: "gh_scan"
+      PRECOMMIT_HOOK_NAME: "Github Repository Scanning"
+      PRECOMMIT_HOOK_STAGE: "manual"
+      PRECOMMIT_HOOK_VERBOSE: true
+      PYTHON_VERSIONS: ${{ toJSON(fromJSON(needs.configuration.outputs.JSON_FILE_DATA).ci_python_versions) }}
+      VERBOSE_NOTIFICATIONS: true
+
+  ops_genie:
+    needs: [gh_scan]
+    if: failure()
+    secrets:
+      OPSGENIE_API_KEY: ${{ secrets.OPSGENIE_API_KEY }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    uses: cicd-tools-org/cicd-tools/.github/workflows/job-00-generic-alert_opsgenie.yml@main
+    with:
+      ALERT_ALIAS: "GH_SCAN_FAILED"
+      ALERT_PRIORITY: "P1"
+      ALERT_MESSAGE: "Vulnerability detected in a GitHub repository."
