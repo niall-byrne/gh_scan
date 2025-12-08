@@ -12,6 +12,9 @@ on:
   workflow_dispatch:
 
 #  secrets:
+#    EXTERNAL_DEPLOY_KEY:
+#      description: "Allows cloning external repositories."
+#      required: true
 #    OPSGENIE_API_KEY:
 #      description: "Allows Ops Genie notifications."
 #      required: true
@@ -28,6 +31,25 @@ jobs:
     uses: cicd-tools-org/cicd-tools/.github/workflows/job-00-generic-read_json_file.yml@main
     with:
       JSON_FILE_PATH: ".github/config/workflows/workflow-push.json"
+
+  external_scan:
+    needs: [configuration]
+    secrets:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      ENV_SECRET_1: ${{ secrets.EXTERNAL_DEPLOY_KEY }}
+    uses: cicd-tools-org/cicd-tools/.github/workflows/job-80-poetry-precommit_commit_stage_hook.yml@main
+    with:
+      CONCURRENCY: ${{ fromJSON(needs.configuration.outputs.JSON_FILE_DATA).ci_concurrency_limit }}
+      PRE_HOOK_COMMAND: |
+        echo "EXTERNAL_DEPLOY_KEY<<EOF" >> $GITHUB_ENV
+        echo "${ENV_SECRET_1}" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+      PRECOMMIT_HOOK_ID: "external_scan"
+      PRECOMMIT_HOOK_NAME: "External Git Repository Scanning"
+      PRECOMMIT_HOOK_STAGE: "manual"
+      PRECOMMIT_HOOK_VERBOSE: true
+      PYTHON_VERSIONS: ${{ toJSON(fromJSON(needs.configuration.outputs.JSON_FILE_DATA).ci_python_versions) }}
+      VERBOSE_NOTIFICATIONS: true
 
   gh_scan:
     needs: [configuration]
@@ -46,7 +68,7 @@ jobs:
       VERBOSE_NOTIFICATIONS: true
 
   ops_genie:
-    needs: [gh_scan]
+    needs: [external_scan, gh_scan]
     if: failure()
     secrets:
       OPSGENIE_API_KEY: ${{ secrets.OPSGENIE_API_KEY }}

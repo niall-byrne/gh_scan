@@ -61,3 +61,10 @@ repos:
         pass_filenames: false
         stages: [manual]
         always_run: true
+      - id: external_scan
+        name: external_scan
+        entry: ./scripts/external_scan.sh
+        language: system
+        pass_filenames: false
+        stages: [manual]
+        always_run: true
