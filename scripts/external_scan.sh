@@ -6,9 +6,6 @@ set -eo pipefail
 
 declare -A configuration
 
-configuration["git@bitbucket.org:niall-byrne/cross_shopper_scraper.git"]="npm audit --omit=dev"
-configuration["git@bitbucket.org:niall-byrne/cross_shopper_backend.git"]="pre-commit run python-safety-dependencies-check --hook-stage manual --files pyproject.toml"
-
 configure_external_dependencies() {
   poetry self add "poetry-plugin-export>=1.8"
 }
