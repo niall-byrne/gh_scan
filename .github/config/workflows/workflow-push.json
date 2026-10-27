@@ -6,7 +6,7 @@
     "## Customizable Text.",
     "This message is appended to the changelog of your GitHub release."
   ],
-  "ci_python_versions": ["3.9"],
+  "ci_python_versions": ["3.10"],
   "ci_trufflehog_extra_scan_args": "",
   "ci_verbose_notifications": false
 }
